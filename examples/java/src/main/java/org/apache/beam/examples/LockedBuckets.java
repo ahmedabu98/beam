@@ -22,7 +22,7 @@ public class LockedBuckets {
 
   public interface writeTextIOOptions extends PipelineOptions {
     @Description("Output to write to")
-    @Default.String("gs://ahmedabualsaud-usc/file4")
+    @Default.String("gs://ahmedabualsaud-usc/file2")
     String getOutput();
 
     void setOutput(String value);

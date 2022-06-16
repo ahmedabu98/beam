@@ -995,7 +995,11 @@ public class GcsUtil {
     for (int i = 0; i < srcList.size(); i++) {
       final GcsPath sourcePath = GcsPath.fromUri(srcList.get(i));
       final GcsPath destPath = GcsPath.fromUri(destList.get(i));
+      System.out.println("sourcePath: " + sourcePath);
+      System.out.println("destPath: " + destPath);
+      System.out.println("ignoreExistingDest: " + ignoreExistingDest);
       if (ignoreExistingDest && !sourcePath.getBucket().equals(destPath.getBucket())) {
+        System.out.println("Source and destination are in different buckets. Throwing UnsupportedOperationException");
         throw new UnsupportedOperationException(
             "Skipping dest existence is only supported within a bucket.");
       }

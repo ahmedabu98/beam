@@ -320,15 +320,19 @@ public class FileSystems {
       MoveOptions... moveOptions)
       throws IOException {
     try {
+      System.out.println("Rename from FileSystems.renameInternal. Attempting to skip filter step.");
       fileSystem.rename(srcResourceIds, destResourceIds, moveOptions);
     } catch (UnsupportedOperationException e) {
+      System.out.println("UnsupportedOperationException caught. Will filter for file and retry without moveOptions");
       // Some file systems do not yet support specifying the move options. Instead we
       // perform filtering using match calls before renaming.
       FilterResult filtered = filterFiles(fileSystem, srcResourceIds, destResourceIds, moveOptions);
       if (!filtered.resultSources.isEmpty()) {
+        System.out.println("here");
         fileSystem.rename(filtered.resultSources, filtered.resultDestinations);
       }
       if (!filtered.filteredExistingSrcs.isEmpty()) {
+        System.out.println("also here");
         fileSystem.delete(filtered.filteredExistingSrcs);
       }
     }
@@ -418,6 +422,9 @@ public class FileSystems {
     final boolean skipExistingDest =
         moveOptionSet.contains(StandardMoveOptions.SKIP_IF_DESTINATION_EXISTS);
     final int size = srcResourceIds.size();
+    System.out.println("Here are the flags in the filter:");
+    System.out.println("ignoreMissingSrc: " + ignoreMissingSrc);
+    System.out.println("skipExistingDest: " + skipExistingDest);
 
     // Match necessary srcs and dests with a single match call.
     List<ResourceId> matchResources = new ArrayList<>();
