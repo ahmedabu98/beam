@@ -57,6 +57,7 @@ import java.nio.channels.WritableByteChannel;
 import java.nio.file.AccessDeniedException;
 import java.nio.file.FileAlreadyExistsException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -78,8 +79,10 @@ import org.apache.beam.runners.core.metrics.MonitoringInfoConstants;
 import org.apache.beam.runners.core.metrics.ServiceCallMetric;
 import org.apache.beam.sdk.extensions.gcp.options.GcsOptions;
 import org.apache.beam.sdk.extensions.gcp.util.gcsfs.GcsPath;
+import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.fs.MoveOptions;
 import org.apache.beam.sdk.io.fs.MoveOptions.StandardMoveOptions;
+import org.apache.beam.sdk.io.fs.ResourceId;
 import org.apache.beam.sdk.options.DefaultValueFactory;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.util.FluentBackoff;
@@ -897,6 +900,24 @@ public class GcsUtil {
         } else {
           throw new FileNotFoundException(from.toString());
         }
+      } else if (e.getCode() == 403 && e.getErrors().get(0).getReason().equals("retentionPolicyNotMet")) {
+        System.out.println("Error 403");
+        System.out.println(e);
+        List<StorageObjectOrIOException> srcAndDestObjects = getObjects(Arrays.asList(from, to));
+        if (srcAndDestObjects.get(0).storageObject().getMd5Hash().equals(srcAndDestObjects.get(1).storageObject().getMd5Hash())) {
+          // File has already been written. Treat this as a successful rewrite
+          readyToEnqueue = false;
+          lastError = null;
+        } else {
+          // User is attempting to write to a file that hasn't met its retention policy yet.
+          throw new IOException(e.getMessage());
+        }
+
+        for (StorageObjectOrIOException o : srcAndDestObjects) {
+          System.out.println("hash: " + o.storageObject().getMd5Hash());
+        }
+        System.out.println("Source: " + getFrom());
+        System.out.println("Destination: " + getTo() + "\n");
       } else {
         lastError = e;
         readyToEnqueue = true;
@@ -999,7 +1020,7 @@ public class GcsUtil {
       System.out.println("destPath: " + destPath);
       System.out.println("ignoreExistingDest: " + ignoreExistingDest);
       if (ignoreExistingDest && !sourcePath.getBucket().equals(destPath.getBucket())) {
-        System.out.println("Source and destination are in different buckets. Throwing UnsupportedOperationException");
+        System.out.println("Source and destination are in different buckets. Throwing UnsupportedOperationException\n");
         throw new UnsupportedOperationException(
             "Skipping dest existence is only supported within a bucket.");
       }

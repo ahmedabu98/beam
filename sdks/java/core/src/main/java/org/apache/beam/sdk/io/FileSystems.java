@@ -320,7 +320,7 @@ public class FileSystems {
       MoveOptions... moveOptions)
       throws IOException {
     try {
-      System.out.println("Rename from FileSystems.renameInternal. Attempting to skip filter step.");
+      System.out.println("\nRename from FileSystems.renameInternal. Attempting to skip filter step.\n");
       fileSystem.rename(srcResourceIds, destResourceIds, moveOptions);
     } catch (UnsupportedOperationException e) {
       System.out.println("UnsupportedOperationException caught. Will filter for file and retry without moveOptions");
@@ -328,11 +328,9 @@ public class FileSystems {
       // perform filtering using match calls before renaming.
       FilterResult filtered = filterFiles(fileSystem, srcResourceIds, destResourceIds, moveOptions);
       if (!filtered.resultSources.isEmpty()) {
-        System.out.println("here");
         fileSystem.rename(filtered.resultSources, filtered.resultDestinations);
       }
       if (!filtered.filteredExistingSrcs.isEmpty()) {
-        System.out.println("also here");
         fileSystem.delete(filtered.filteredExistingSrcs);
       }
     }
@@ -424,7 +422,7 @@ public class FileSystems {
     final int size = srcResourceIds.size();
     System.out.println("Here are the flags in the filter:");
     System.out.println("ignoreMissingSrc: " + ignoreMissingSrc);
-    System.out.println("skipExistingDest: " + skipExistingDest);
+    System.out.println("skipExistingDest: " + skipExistingDest + "\n");
 
     // Match necessary srcs and dests with a single match call.
     List<ResourceId> matchResources = new ArrayList<>();
@@ -443,7 +441,12 @@ public class FileSystems {
             ? matchResults.subList(matchResults.size() - size, matchResults.size())
             : null;
 
+    System.out.println("\nMATCHSRCRESULTS: " + matchSrcResults);
+    System.out.println("MATCHDESTRESULTS: " + matchDestResults + "\n");
+
     for (int i = 0; i < size; ++i) {
+      System.out.println(String.format("checksum of source file %s: %s", i, matchSrcResults.get(i).metadata().get(0).checksum()));
+      // System.out.println(String.format("checksum of destination file %s: %s", i, matchDestResults.get(i).metadata().get(0).checksum()));
       if (matchSrcResults != null && matchSrcResults.get(i).status().equals(Status.NOT_FOUND)) {
         // If the source is not found, and we are ignoring missing source files, then we skip it.
         continue;
@@ -455,12 +458,15 @@ public class FileSystems {
               matchSrcResults.get(i).metadata().get(0))) {
         // If the destination exists, and we are skipping when destinations exist, then we skip
         // the copy but note that the source exists in case it should be deleted.
+        System.out.println("destination exists, skipping file\n");
         result.filteredExistingSrcs.add(srcResourceIds.get(i));
         continue;
       }
       result.resultSources.add(srcResourceIds.get(i));
       result.resultDestinations.add(destResourceIds.get(i));
     }
+    System.out.println("result sources: " + result.resultSources);
+    System.out.println("result destinations: " + result.resultDestinations + "\n");
     return result;
   }
 
