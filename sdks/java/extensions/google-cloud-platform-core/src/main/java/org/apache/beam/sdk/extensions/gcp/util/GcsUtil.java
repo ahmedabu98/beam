@@ -79,10 +79,8 @@ import org.apache.beam.runners.core.metrics.MonitoringInfoConstants;
 import org.apache.beam.runners.core.metrics.ServiceCallMetric;
 import org.apache.beam.sdk.extensions.gcp.options.GcsOptions;
 import org.apache.beam.sdk.extensions.gcp.util.gcsfs.GcsPath;
-import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.fs.MoveOptions;
 import org.apache.beam.sdk.io.fs.MoveOptions.StandardMoveOptions;
-import org.apache.beam.sdk.io.fs.ResourceId;
 import org.apache.beam.sdk.options.DefaultValueFactory;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.util.FluentBackoff;
@@ -900,24 +898,36 @@ public class GcsUtil {
         } else {
           throw new FileNotFoundException(from.toString());
         }
-      } else if (e.getCode() == 403 && e.getErrors().get(0).getReason().equals("retentionPolicyNotMet")) {
+      } else if (e.getCode() == 403
+      // && e.getErrors().get(0).getReason().equals("retentionPolicyNotMet")
+      ) {
         System.out.println("Error 403");
         System.out.println(e);
         List<StorageObjectOrIOException> srcAndDestObjects = getObjects(Arrays.asList(from, to));
-        if (srcAndDestObjects.get(0).storageObject().getMd5Hash().equals(srcAndDestObjects.get(1).storageObject().getMd5Hash())) {
-          // File has already been written. Treat this as a successful rewrite
+        System.out.println(
+            "Source: "
+                + getFrom()
+                + " with hash: "
+                + srcAndDestObjects.get(0).storageObject().getMd5Hash());
+        System.out.println(
+            "Destination: "
+                + getTo()
+                + " with hash: "
+                + srcAndDestObjects.get(1).storageObject().getMd5Hash());
+        // Compare checksums via MD5 Hashes
+        if (srcAndDestObjects.get(0).storageObject().getMd5Hash()
+            .equals(srcAndDestObjects.get(1).storageObject().getMd5Hash())) {
+          // Source and destination are identical. Treat this as a successful rewrite
+          LOG.warn(
+              "Caught retentionPolicyNotMet error while rewriting to a bucket with retention policy. "
+                  + "Skipping because destination {} and source {} are already identical.",
+              getFrom(), getTo());
           readyToEnqueue = false;
           lastError = null;
         } else {
           // User is attempting to write to a file that hasn't met its retention policy yet.
           throw new IOException(e.getMessage());
         }
-
-        for (StorageObjectOrIOException o : srcAndDestObjects) {
-          System.out.println("hash: " + o.storageObject().getMd5Hash());
-        }
-        System.out.println("Source: " + getFrom());
-        System.out.println("Destination: " + getTo() + "\n");
       } else {
         lastError = e;
         readyToEnqueue = true;
@@ -945,6 +955,9 @@ public class GcsUtil {
         moveOptionSet.contains(StandardMoveOptions.IGNORE_MISSING_FILES);
     final boolean ignoreExistingDest =
         moveOptionSet.contains(StandardMoveOptions.SKIP_IF_DESTINATION_EXISTS);
+    System.out.println(
+        "ignoreMissingSrc: " + ignoreMissingSrc + ", ignoreExistingDest: " + ignoreExistingDest);
+
     rewriteHelper(
         srcFilenames, destFilenames, /*deleteSource=*/ true, ignoreMissingSrc, ignoreExistingDest);
   }
@@ -1020,7 +1033,8 @@ public class GcsUtil {
       System.out.println("destPath: " + destPath);
       System.out.println("ignoreExistingDest: " + ignoreExistingDest);
       if (ignoreExistingDest && !sourcePath.getBucket().equals(destPath.getBucket())) {
-        System.out.println("Source and destination are in different buckets. Throwing UnsupportedOperationException\n");
+        System.out.println(
+            "Source and destination are in different buckets. Throwing UnsupportedOperationException\n");
         throw new UnsupportedOperationException(
             "Skipping dest existence is only supported within a bucket.");
       }

@@ -320,10 +320,12 @@ public class FileSystems {
       MoveOptions... moveOptions)
       throws IOException {
     try {
-      System.out.println("\nRename from FileSystems.renameInternal. Attempting to skip filter step.\n");
+      System.out.println(
+          "\nRename from FileSystems.renameInternal. Attempting to skip filter step.\n");
       fileSystem.rename(srcResourceIds, destResourceIds, moveOptions);
     } catch (UnsupportedOperationException e) {
-      System.out.println("UnsupportedOperationException caught. Will filter for file and retry without moveOptions");
+      System.out.println(
+          "UnsupportedOperationException caught. Will filter for file and retry without moveOptions");
       // Some file systems do not yet support specifying the move options. Instead we
       // perform filtering using match calls before renaming.
       FilterResult filtered = filterFiles(fileSystem, srcResourceIds, destResourceIds, moveOptions);
@@ -445,8 +447,12 @@ public class FileSystems {
     System.out.println("MATCHDESTRESULTS: " + matchDestResults + "\n");
 
     for (int i = 0; i < size; ++i) {
-      System.out.println(String.format("checksum of source file %s: %s", i, matchSrcResults.get(i).metadata().get(0).checksum()));
-      // System.out.println(String.format("checksum of destination file %s: %s", i, matchDestResults.get(i).metadata().get(0).checksum()));
+      System.out.println(
+          String.format(
+              "checksum of source file %s: %s",
+              i, matchSrcResults.get(i).metadata().get(0).checksum()));
+      // System.out.println(String.format("checksum of destination file %s: %s", i,
+      // matchDestResults.get(i).metadata().get(0).checksum()));
       if (matchSrcResults != null && matchSrcResults.get(i).status().equals(Status.NOT_FOUND)) {
         // If the source is not found, and we are ignoring missing source files, then we skip it.
         continue;
