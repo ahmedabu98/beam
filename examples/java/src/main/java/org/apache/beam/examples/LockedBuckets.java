@@ -47,7 +47,7 @@ public class LockedBuckets {
     void setTemp(String value);
 
     @Description("Max Number")
-    @Default.Integer(20)
+    @Default.Integer(100)
     Integer getMaxNumber();
 
     void setMaxNumber(Integer value);
@@ -79,7 +79,7 @@ public class LockedBuckets {
             TextIO.write()
                 .to(options.getOutput())
                 .withTempDirectory(tempDirectory)
-                .withoutSharding());
+                .withNumShards(5));
 
     p.run().waitUntilFinish();
   }

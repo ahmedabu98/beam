@@ -898,7 +898,7 @@ public class GcsUtil {
         } else {
           throw new FileNotFoundException(from.toString());
         }
-      } else if (e.getCode() == 403
+      } else if (e.getCode() == 403 && e.getErrors().size() == 1
       // && e.getErrors().get(0).getReason().equals("retentionPolicyNotMet")
       ) {
         System.out.println("Error 403");
@@ -919,8 +919,9 @@ public class GcsUtil {
             .equals(srcAndDestObjects.get(1).storageObject().getMd5Hash())) {
           // Source and destination are identical. Treat this as a successful rewrite
           LOG.warn(
-              "Caught retentionPolicyNotMet error while rewriting to a bucket with retention policy. "
-                  + "Skipping because destination {} and source {} are already identical.",
+              "Caught retentionPolicyNotMet error while rewriting to a bucket with retention "
+                  + "policy. Skipping because destination {} and source {} are deemed identical "
+                  + "because their MD5 Hashes are equal.",
               getFrom(), getTo());
           readyToEnqueue = false;
           lastError = null;
