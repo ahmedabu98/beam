@@ -443,14 +443,14 @@ public class FileSystems {
             ? matchResults.subList(matchResults.size() - size, matchResults.size())
             : null;
 
-    System.out.println("\nMATCHSRCRESULTS: " + matchSrcResults);
-    System.out.println("MATCHDESTRESULTS: " + matchDestResults + "\n");
+    // System.out.println("\nMATCHSRCRESULTS: " + matchSrcResults);
+    // System.out.println("MATCHDESTRESULTS: " + matchDestResults + "\n");
 
     for (int i = 0; i < size; ++i) {
-      System.out.println(
-          String.format(
-              "checksum of source file %s: %s",
-              i, matchSrcResults.get(i).metadata().get(0).checksum()));
+      // System.out.println(
+      //     String.format(
+      //         "checksum of source file %s: %s",
+      //         i, matchSrcResults.get(i).metadata().get(0).checksum()));
       // System.out.println(String.format("checksum of destination file %s: %s", i,
       // matchDestResults.get(i).metadata().get(0).checksum()));
       if (matchSrcResults != null && matchSrcResults.get(i).status().equals(Status.NOT_FOUND)) {

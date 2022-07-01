@@ -898,11 +898,12 @@ public class GcsUtil {
         } else {
           throw new FileNotFoundException(from.toString());
         }
-      } else if (e.getCode() == 403 && e.getErrors().size() == 1
+      } else if (e.getCode() == HttpStatusCodes.STATUS_CODE_FORBIDDEN && e.getErrors().size() == 1
       // && e.getErrors().get(0).getReason().equals("retentionPolicyNotMet")
       ) {
         System.out.println("Error 403");
         System.out.println(e);
+        System.out.println(e.getClass());
         List<StorageObjectOrIOException> srcAndDestObjects = getObjects(Arrays.asList(from, to));
         System.out.println(
             "Source: "
