@@ -36,10 +36,11 @@ String HIGH_RANGE_PORT = "32767"
 job(jobName) {
   common.setTopLevelMainJobProperties(delegate, 'master', 120)
   common.setAutoJob(delegate, 'H H/6 * * *')
-  common.enablePhraseTriggeringFromPullRequest(
-      delegate,
-      'Java KafkaIO Performance Test',
-      'Run Java KafkaIO Performance Test')
+  // [Issue#21824] Disable trigger
+  //  common.enablePhraseTriggeringFromPullRequest(
+  //      delegate,
+  //      'Java KafkaIO Performance Test',
+  //      'Run Java KafkaIO Performance Test')
   InfluxDBCredentialsHelper.useCredentials(delegate)
 
   String namespace = common.getKubernetesNamespace(jobName)
