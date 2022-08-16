@@ -751,7 +751,9 @@ class WaitForBQJobs(beam.DoFn):
     for ref in job_references:
       # We must poll repeatedly until the job finishes or fails, thus setting
       # max_retries to 0.
+      _LOGGER.info("Waiting for BQ Job: %s", ref)
       self.bq_wrapper.wait_for_bq_job(ref, sleep_duration_sec=10, max_retries=0)
+    _LOGGER.info("Finished waiting for BQ Job(s): %s", dest_ids_list)
 
     return dest_ids_list  # Pass the list of destination-jobs downstream
 
