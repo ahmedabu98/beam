@@ -79,6 +79,7 @@ _FILE_TRIGGERING_BATCHING_DURATION_SECS = 1
 
 
 def _generate_job_name(job_name, job_type, step_name):
+  _LOGGER.info("Generating job name with name: %s and type: %s", job_name, job_type)
   return bigquery_tools.generate_bq_job_name(
       job_name=job_name,
       step_id=step_name,
@@ -612,7 +613,7 @@ class TriggerLoadJobs(beam.DoFn):
     # triggered for each partition of files.
     destination = element[0]
     files = element[1]
-
+    _LOGGER.info("@ beginning of TriggerLoadJobs with pcv prefix: %s", load_job_name_prefix)
     if callable(self.schema):
       schema = self.schema(destination, *schema_side_inputs)
     elif isinstance(self.schema, vp.ValueProvider):
@@ -676,6 +677,7 @@ class TriggerLoadJobs(beam.DoFn):
         source_format=self.source_format,
         job_labels=self.bq_io_metadata.add_additional_bq_job_labels(),
         load_job_project_id=self.load_job_project_id)
+    _LOGGER.info("@ TriggerLoadJobs, destination: %s, job_reference: %s", destination, job_reference)
     yield (destination, job_reference)
 
 
@@ -746,16 +748,25 @@ class WaitForBQJobs(beam.DoFn):
   def start_bundle(self):
     self.bq_wrapper = bigquery_tools.BigQueryWrapper(client=self.test_client)
 
-  def process(self, element, dest_ids_list):
-    job_references = [elm[1] for elm in dest_ids_list]
+  def process(self, element, pcv):
+    print(element[1])
+    job_references = [elm[1] for elm in element]
     for ref in job_references:
       # We must poll repeatedly until the job finishes or fails, thus setting
       # max_retries to 0.
       _LOGGER.info("Waiting for BQ Job: %s", ref)
+      _LOGGER.info("Job name PCV: %s", pcv)
       self.bq_wrapper.wait_for_bq_job(ref, sleep_duration_sec=10, max_retries=0)
-    _LOGGER.info("Finished waiting for BQ Job(s): %s", dest_ids_list)
+    job = "?"
+    if 'LOAD_STEP' in pcv:
+      job = "LOAD"
+    elif 'COPY_STEP' in pcv:
+      job = "COPY"
+    elif 'SCHEMA_MOD_STEP' in pcv:
+      job = "SCHEMA"
+    _LOGGER.info("Finished waiting for %s BQ Job(s): %s", job, element)
 
-    return dest_ids_list  # Pass the list of destination-jobs downstream
+    return element  # Pass the list of destination-jobs downstream
 
 
 class DeleteTablesFn(beam.DoFn):
@@ -1032,11 +1043,10 @@ class BigQueryBatchFileLoads(beam.PTransform):
     temp_tables_pc = trigger_loads_outputs[TriggerLoadJobs.TEMP_TABLES]
 
     finished_temp_tables_load_jobs_pc = (
-        p
-        | "ImpulseMonitorLoadJobs" >> beam.Create([None])
+        pvalue.AsList(temp_tables_load_job_ids_pc).pvalue
         | "WaitForTempTableLoadJobs" >> beam.ParDo(
             WaitForBQJobs(self.test_client),
-            pvalue.AsList(temp_tables_load_job_ids_pc)))
+            load_job_name_pcv))
 
     schema_mod_job_ids_pc = (
         finished_temp_tables_load_jobs_pc
@@ -1050,11 +1060,10 @@ class BigQueryBatchFileLoads(beam.PTransform):
             schema_mod_job_name_pcv))
 
     finished_schema_mod_jobs_pc = (
-        p
-        | "ImpulseMonitorSchemaModJobs" >> beam.Create([None])
+        pvalue.AsList(schema_mod_job_ids_pc).pvalue
         | "WaitForSchemaModJobs" >> beam.ParDo(
             WaitForBQJobs(self.test_client),
-            pvalue.AsList(schema_mod_job_ids_pc)))
+            schema_mod_job_name_pcv))
 
     destination_copy_job_ids_pc = (
         finished_temp_tables_load_jobs_pc
@@ -1069,15 +1078,14 @@ class BigQueryBatchFileLoads(beam.PTransform):
             pvalue.AsIter(finished_schema_mod_jobs_pc)))
 
     finished_copy_jobs_pc = (
-        p
-        | "ImpulseMonitorCopyJobs" >> beam.Create([None])
+        pvalue.AsList(destination_copy_job_ids_pc).pvalue
         | "WaitForCopyJobs" >> beam.ParDo(
             WaitForBQJobs(self.test_client),
-            pvalue.AsList(destination_copy_job_ids_pc)))
+            copy_job_name_pcv))
 
     _ = (
         p
-        | "RemoveTempTables/Impulse" >> beam.Create([None])
+        | "RemoveTempTables/Impulse" >> beam.Impulse()
         | "RemoveTempTables/PassTables" >> beam.FlatMap(
             lambda _,
             unused_copy_jobs,
@@ -1108,11 +1116,10 @@ class BigQueryBatchFileLoads(beam.PTransform):
             *self.schema_side_inputs))
 
     _ = (
-        p
-        | "ImpulseMonitorDestinationLoadJobs" >> beam.Create([None])
+        pvalue.AsList(destination_load_job_ids_pc).pvalue
         | "WaitForDestinationLoadJobs" >> beam.ParDo(
             WaitForBQJobs(self.test_client),
-            pvalue.AsList(destination_load_job_ids_pc)))
+            load_job_name_pcv))
 
     destination_load_job_ids_pc = (
         (temp_tables_load_job_ids_pc, destination_load_job_ids_pc)
@@ -1134,6 +1141,19 @@ class BigQueryBatchFileLoads(beam.PTransform):
 
     empty_pc = p | "ImpulseEmptyPC" >> beam.Create([])
     singleton_pc = p | "ImpulseSingleElementPC" >> beam.Create([None])
+
+    def printing(element):
+      _LOGGER.info("Debug pcv being triggered: %s", element)
+      return element
+
+    debug_pcv = pvalue.AsSingleton(
+      singleton_pc
+      | "DebugSingleton" >> beam.Map(
+        lambda _: _generate_job_name(
+          job_name, bigquery_tools.BigQueryJobTypes.QUERY, 'DEBUG_STEP'
+        ))
+      | "Printing" >> beam.Map(printing)
+    )
 
     load_job_name_pcv = pvalue.AsSingleton(
         singleton_pc
