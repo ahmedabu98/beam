@@ -269,6 +269,8 @@ def parse_table_reference(table, dataset=None, project=None):
     table_reference.projectId = match.group('project')
     table_reference.datasetId = match.group('dataset')
     table_reference.tableId = match.group('table')
+    if table_reference.projectId is None:
+      table_reference.projectId = project
   else:
     table_reference.projectId = project
     table_reference.datasetId = dataset
@@ -1676,9 +1678,10 @@ class AppendDestinationsFn(DoFn):
 
   Experimental; no backwards compatibility guarantees.
   """
-  def __init__(self, destination):
+  def __init__(self, destination, project=None):
     self._display_destination = destination
     self.destination = AppendDestinationsFn._get_table_fn(destination)
+    self.project = project
 
   def display_data(self):
     return {'destination': str(self._display_destination)}
@@ -1701,7 +1704,10 @@ class AppendDestinationsFn(DoFn):
           destination).get()
 
   def process(self, element, *side_inputs):
-    yield (self.destination(element, *side_inputs), element)
+    destination = self.destination(element, *side_inputs)
+    if not isinstance(destination, TableReference):
+      destination = parse_table_reference(destination, project=self.project)
+    yield (destination, element)
 
 
 def get_table_schema_from_string(schema):

@@ -2362,6 +2362,7 @@ bigquery_v2_messages.TableSchema`. or a `ValueProvider` that has a JSON string,
         triggering_frequency = self.triggering_frequency
       output = pcoll | BigQueryBatchFileLoads(
           destination=self.table_reference,
+          project=self._project,
           schema=self.schema,
           create_disposition=self.create_disposition,
           write_disposition=self.write_disposition,

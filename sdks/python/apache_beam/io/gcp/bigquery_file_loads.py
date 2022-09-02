@@ -77,6 +77,9 @@ _FILE_TRIGGERING_RECORD_COUNT = 500000
 # triggering file write to avoid generating too many small files.
 _FILE_TRIGGERING_BATCHING_DURATION_SECS = 1
 
+# How many seconds we wait before polling a pending job
+_SLEEP_DURATION_BETWEEN_POLLS = 10
+
 
 def _generate_job_name(job_name, job_type, step_name):
   return bigquery_tools.generate_bq_job_name(
@@ -431,18 +434,18 @@ class UpdateDestinationSchema(beam.DoFn):
     # Trigger potential schema modification by loading zero rows into the
     # destination table with the temporary table schema.
     schema_update_job_reference = self._bq_wrapper.perform_load_job(
-        destination=table_reference,
-        source_stream=io.BytesIO(),  # file with zero rows
-        job_id=job_name,
-        schema=temp_table_schema,
-        write_disposition='WRITE_APPEND',
-        create_disposition='CREATE_NEVER',
-        additional_load_parameters=additional_parameters,
-        job_labels=self._bq_io_metadata.add_additional_bq_job_labels(),
-        # JSON format is hardcoded because zero rows load(unlike AVRO) and
-        # a nested schema(unlike CSV, which a default one) is permitted.
-        source_format="NEWLINE_DELIMITED_JSON",
-        load_job_project_id=self._load_job_project_id)
+      destination=table_reference,
+      source_stream=io.BytesIO(),  # file with zero rows
+      job_id=job_name,
+      schema=temp_table_schema,
+      write_disposition='WRITE_APPEND',
+      create_disposition='CREATE_NEVER',
+      additional_load_parameters=additional_parameters,
+      job_labels=self._bq_io_metadata.add_additional_bq_job_labels(),
+      # JSON format is hardcoded because zero rows load(unlike AVRO) and
+      # a nested schema(unlike CSV, which a default one) is permitted.
+      source_format="NEWLINE_DELIMITED_JSON",
+      load_job_project_id=self._load_job_project_id)
     yield (destination, schema_update_job_reference)
 
 
@@ -603,6 +606,7 @@ class TriggerLoadJobs(beam.DoFn):
     self.bq_wrapper = bigquery_tools.BigQueryWrapper(client=self.test_client)
     if not self.bq_io_metadata:
       self.bq_io_metadata = create_bigquery_io_metadata(self._step_name)
+    self.pending_jobs = []
 
   def process(self, element, load_job_name_prefix, *schema_side_inputs):
     # Each load job is assumed to have files respecting these constraints:
@@ -785,6 +789,7 @@ class BigQueryBatchFileLoads(beam.PTransform):
   def __init__(
       self,
       destination,
+      project=None,
       schema=None,
       custom_gcs_temp_location=None,
       create_disposition=None,
@@ -804,6 +809,7 @@ class BigQueryBatchFileLoads(beam.PTransform):
       is_streaming_pipeline=False,
       load_job_project_id=None):
     self.destination = destination
+    self.project = project
     self.create_disposition = create_disposition
     self.write_disposition = write_disposition
     self.triggering_frequency = triggering_frequency
@@ -1120,6 +1126,7 @@ class BigQueryBatchFileLoads(beam.PTransform):
 
   def expand(self, pcoll):
     p = pcoll.pipeline
+    project = self.project or p.options.view_as(GoogleCloudOptions).project
     try:
       step_name = self.label
     except AttributeError:
@@ -1163,7 +1170,7 @@ class BigQueryBatchFileLoads(beam.PTransform):
         pcoll
         | "RewindowIntoGlobal" >> self._window_fn()
         | "AppendDestination" >> beam.ParDo(
-            bigquery_tools.AppendDestinationsFn(self.destination),
+            bigquery_tools.AppendDestinationsFn(self.destination, project),
             *self.table_side_inputs))
 
     if not self.with_auto_sharding:
