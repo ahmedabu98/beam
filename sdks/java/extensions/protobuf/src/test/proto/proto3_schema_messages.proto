@@ -49,6 +49,7 @@ message Primitive {
     bool primitive_bool = 13;
     string primitive_string = 14;
     bytes primitive_bytes = 15;
+    google.protobuf.Timestamp primitive_timestamp = 16;
 }
 
 message RepeatPrimitive {
