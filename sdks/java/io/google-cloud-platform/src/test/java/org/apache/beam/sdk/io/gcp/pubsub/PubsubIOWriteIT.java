@@ -20,10 +20,15 @@ package org.apache.beam.sdk.io.gcp.pubsub;
 import com.google.protobuf.DynamicMessage;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.Timestamp;
+import java.util.Arrays;
+import java.util.List;
+import org.apache.beam.runners.core.construction.renderer.PipelineDotRenderer;
+import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.extensions.protobuf.Proto3SchemaMessages.Primitive;
 import org.apache.beam.sdk.extensions.protobuf.ProtoCoder;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubClient.TopicPath;
 import org.apache.beam.sdk.testing.TestPipeline;
+import org.apache.beam.sdk.testing.TestPipelineOptions;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.values.PCollection;
@@ -40,18 +45,20 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public class PubsubIOWriteIT {
   private static final String TOPIC_PATH = "projects/google.com:clouddfe/topics/test-topic-proto";
-  @Rule public transient TestPipeline readPipeline = TestPipeline.create();
   @Rule public transient TestPipeline writePipeline = TestPipeline.create();
+  @Rule public transient TestPipeline readPipeline = TestPipeline.create();
   @Rule public transient TestPubsubSignal signal = TestPubsubSignal.create();
 
   @Test
   public void testWriteReadProtos() throws Exception {
+    readPipeline.getOptions().as(TestPipelineOptions.class).setBlockOnRun(false);
+
     Timestamp time = Timestamp.newBuilder().setSeconds(100).setNanos(10).build();
     ImmutableList<Primitive> inputs =
         ImmutableList.of(
-            Primitive.newBuilder().setPrimitiveInt32(42).build(),
+            Primitive.newBuilder().setPrimitiveInt32(10).build(),
             Primitive.newBuilder().setPrimitiveBool(true).build(),
-            Primitive.newBuilder().setPrimitiveString("Hello, World!").build(),
+            Primitive.newBuilder().setPrimitiveString("Hello, World").build(),
             Primitive.newBuilder().setPrimitiveTimestamp(time).build());
 
     writePipeline
@@ -81,12 +88,16 @@ public class PubsubIOWriteIT {
 
     messages.apply(signal.signalSuccessWhen(messages.getCoder(), anyMessages -> true));
 
-    Supplier<Void> start = signal.waitForStart(Duration.standardMinutes(5));
+    Supplier<Void> start = signal.waitForStart(Duration.standardMinutes(1));
     readPipeline.apply(signal.signalStart());
-    readPipeline.run();
-    writePipeline.run();
+    PipelineResult job = readPipeline.run();
     start.get();
+    writePipeline.run();
 
-    signal.waitForSuccess(Duration.standardMinutes(5));
+    signal.waitForSuccess(Duration.standardMinutes(1));
+
+
+
+    job.cancel();
   }
 }

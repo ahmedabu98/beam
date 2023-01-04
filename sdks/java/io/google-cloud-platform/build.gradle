@@ -184,8 +184,8 @@ configurations.implementation {
  */
 task integrationTest(type: Test, dependsOn: processTestResources) {
   group = "Verification"
-  def gcpProject = project.findProperty('gcpProject') ?: 'apache-beam-testing'
-  def gcpTempRoot = project.findProperty('gcpTempRoot') ?: 'gs://temp-storage-for-end-to-end-tests'
+  def gcpProject = project.findProperty('gcpProject') ?: 'google.com:clouddfe'
+  def gcpTempRoot = project.findProperty('gcpTempRoot') ?: 'gs://ahmedabualsaud-wordcount/tmp'
   def firestoreDb = project.findProperty('firestoreDb') ?: 'firestoredb'
   systemProperty "beamTestPipelineOptions", JsonOutput.toJson([
           "--runner=DirectRunner",
