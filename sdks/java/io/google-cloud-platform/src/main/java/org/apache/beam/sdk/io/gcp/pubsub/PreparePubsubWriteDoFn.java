@@ -183,6 +183,7 @@ public class PreparePubsubWriteDoFn<InputT> extends DoFn<InputT, PubsubMessage> 
         return;
       }
     }
+    // TODO: Remove this check once Dataflow's native sink supports ordering keys.
     if (!allowOrderingKey && !Strings.isNullOrEmpty(message.getOrderingKey())) {
       badRecordRouter.route(
           o,
