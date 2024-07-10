@@ -28,6 +28,7 @@ import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.transforms.windowing.PaneInfo;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.ValueInSingleWindow;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Strings;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.joda.time.Instant;
 
@@ -182,7 +183,7 @@ public class PreparePubsubWriteDoFn<InputT> extends DoFn<InputT, PubsubMessage> 
         return;
       }
     }
-    if (!allowOrderingKey && message.getOrderingKey() != null) {
+    if (!allowOrderingKey && !Strings.isNullOrEmpty(message.getOrderingKey())) {
       badRecordRouter.route(
           o,
           element,
