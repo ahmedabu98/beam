@@ -119,7 +119,9 @@ class RecordWriterManager implements AutoCloseable {
                           e);
                     }
                     openWriters--;
-                    dataFiles.add(SerializableDataFile.from(recordWriter.getDataFile(), pk));
+                    String partitionPath = IcebergUtils.resolvePartitionPath(pk.toPath(), spec);
+                    dataFiles.add(
+                        SerializableDataFile.from(recordWriter.getDataFile(), partitionPath));
                   })
               .build();
     }
@@ -132,7 +134,7 @@ class RecordWriterManager implements AutoCloseable {
      * can't create a new writer, the {@link Record} is rejected and {@code false} is returned.
      */
     boolean write(Record record) {
-      partitionKey.partition(record);
+      partitionKey.partition(IcebergUtils.getPartitionableRecord(record, spec));
 
       if (!writers.asMap().containsKey(partitionKey) && openWriters >= maxNumWriters) {
         return false;
