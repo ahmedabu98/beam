@@ -359,3 +359,4 @@ include("sdks:java:io:iceberg:hive")
 findProject(":sdks:java:io:iceberg:hive")?.name = "hive"
 include("sdks:java:io:iceberg:hive:exec")
 findProject(":sdks:java:io:iceberg:hive:exec")?.name = "exec"
+include("examples:multi-language:bqms")
