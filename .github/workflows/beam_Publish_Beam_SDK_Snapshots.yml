@@ -92,7 +92,7 @@ jobs:
           BEAM_VERSION_LINE=$(cat gradle.properties | grep "sdk_version")
           echo "BEAM_VERSION=${BEAM_VERSION_LINE#*sdk_version=}" >> $GITHUB_ENV
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1
+        uses: docker/setup-buildx-action@v3
       - name: Authenticate on GCP
         uses: google-github-actions/auth@v3
         with:
