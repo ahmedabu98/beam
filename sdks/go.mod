@@ -50,7 +50,7 @@ require (
 	github.com/nats-io/nats.go v1.47.0
 	github.com/proullon/ramsql v0.1.4
 	github.com/spf13/cobra v1.10.1
-	github.com/testcontainers/testcontainers-go v0.39.0
+	github.com/testcontainers/testcontainers-go v0.40.0
 	github.com/tetratelabs/wazero v1.9.0
 	github.com/xitongsys/parquet-go v1.6.2
 	github.com/xitongsys/parquet-go-source v0.0.0-20241021075129-b732d2ac9c9b
@@ -116,7 +116,7 @@ require (
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
 	github.com/shirou/gopsutil/v4 v4.25.6 // indirect
 	github.com/spiffe/go-spiffe/v2 v2.5.0 // indirect
-	github.com/stretchr/testify v1.10.0 // indirect
+	github.com/stretchr/testify v1.11.0 // indirect
 	github.com/tklauser/go-sysconf v0.3.14 // indirect
 	github.com/tklauser/numcpus v0.9.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
