@@ -21,7 +21,7 @@ import java.io.ByteArrayOutputStream
 import java.util.regex.Pattern
 
 plugins {
-    id("com.pswidersk.terraform-plugin") version "1.1.1"
+    id("com.pswidersk.terraform-plugin") version "1.4.22"
 }
 
 terraformPlugin {
