@@ -23,7 +23,7 @@ plugins {
   // Apply one top level rat plugin to perform any required license enforcement analysis
   id("org.nosphere.apache.rat") version "0.11.0"
   id("org.apache.beam.module")
-  id("org.sonarqube") version "3.0"
+  id("org.sonarqube") version "7.4.0.8496"
 }
 
 /*************************************************************************************************/
