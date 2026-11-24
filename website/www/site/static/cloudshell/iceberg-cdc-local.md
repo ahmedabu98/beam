@@ -66,7 +66,7 @@ Later starts only take a few seconds.
 
 When the `BeamSQL>` prompt shows up, create a catalog and a database:
 
-```sh
+```sql
 CREATE CATALOG quickstart TYPE 'iceberg'
 PROPERTIES (
   'type' = 'hadoop',
@@ -80,7 +80,7 @@ USE DATABASE quickstart.shop;
 Create the source table, `orders`. Its primary key tells the pipeline later on which row each
 change belongs to.
 
-```sh
+```sql
 CREATE EXTERNAL TABLE orders (
   id BIGINT PRIMARY KEY NOT ENFORCED,
   item VARCHAR,
@@ -91,7 +91,7 @@ TYPE 'iceberg';
 
 Open a live view of the table's changes. It's empty for now. Leave it open.
 
-```sh
+```sql
 SELECT * FROM CHANGES(orders)
 WITH ('streaming' = true, 'starting_strategy' = 'earliest', 'poll_interval_seconds' = 1);
 ```
@@ -107,7 +107,7 @@ in it:
 
 Connect to the catalog, and create a second table, `orders_mirror`:
 
-```sh
+```sql
 CREATE CATALOG quickstart TYPE 'iceberg'
 PROPERTIES (
   'type' = 'hadoop',
@@ -129,7 +129,7 @@ change (`_commit_snapshot_sequence_number`). The write side uses them to apply e
 and drops them before it writes. A streaming read starts at the latest snapshot by default, so
 `starting_strategy` also picks up changes made before the pipeline started.
 
-```sh
+```sql
 INSERT INTO orders_mirror
 WITH ('mode' = 'merge-on-read',
       'change_type_column' = '_change_type',
@@ -157,7 +157,7 @@ Start a third shell in the right pane:
 
 Connect to the catalog, and check that both tables are there:
 
-```sh
+```sql
 CREATE CATALOG quickstart TYPE 'iceberg'
 PROPERTIES (
   'type' = 'hadoop',
@@ -170,7 +170,7 @@ SHOW TABLES;
 Add three orders. Each change carries its type (`op`), and a sequence number (`seq`) that goes up
 with each change to the same key:
 
-```sh
+```sql
 INSERT INTO orders
 WITH (
   'mode' = 'merge-on-read',
@@ -185,7 +185,7 @@ VALUES (1, 'apple', 3, 'INSERT', 1),
 Within a few seconds, three inserts show up in the live view on the left. Query both tables. Each
 one holds the same three orders.
 
-```sh
+```sql
 SELECT * FROM orders;
 SELECT * FROM orders_mirror;
 ```
@@ -195,7 +195,7 @@ SELECT * FROM orders_mirror;
 Now change order 1, delete order 2 and add order 4, all in one snapshot. Both halves of an update,
 `UPDATE_BEFORE` and `UPDATE_AFTER`, share a sequence number.
 
-```sh
+```sql
 INSERT INTO orders
 WITH (
   'mode' = 'merge-on-read',
@@ -210,7 +210,7 @@ VALUES (1, 'apple', 3, 'UPDATE_BEFORE', 2),
 
 Four more changes stream into the live view. Query both tables again:
 
-```sh
+```sql
 SELECT * FROM orders;
 SELECT * FROM orders_mirror;
 ```

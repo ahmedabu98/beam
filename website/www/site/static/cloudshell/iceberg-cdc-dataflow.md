@@ -139,7 +139,7 @@ chmod +x beam-sql.sh
 
 When the `BeamSQL>` prompt shows up, connect to the catalog and create a database:
 
-```sh
+```sql
 !run iceberg-cdc/catalog.sql
 CREATE DATABASE IF NOT EXISTS quickstart.shop;
 USE DATABASE quickstart.shop;
@@ -148,7 +148,7 @@ USE DATABASE quickstart.shop;
 Create the source table, `orders`. Its primary key tells the pipeline later on which row each
 change belongs to.
 
-```sh
+```sql
 CREATE EXTERNAL TABLE orders (
   id BIGINT PRIMARY KEY NOT ENFORCED,
   item VARCHAR,
@@ -159,7 +159,7 @@ TYPE 'iceberg';
 
 Open a live view of the table's changes. It's empty for now. Leave it open.
 
-```sh
+```sql
 SELECT * FROM CHANGES(orders)
 WITH ('streaming' = true, 'starting_strategy' = 'earliest', 'poll_interval_seconds' = 1);
 ```
@@ -176,7 +176,7 @@ the Dataflow runner. Its first start builds another shell, so it takes a few min
 Connect to the catalog, create a second table, `orders_mirror`, and send this shell's pipelines to
 Dataflow:
 
-```sh
+```sql
 !run iceberg-cdc/catalog.sql
 USE DATABASE quickstart.shop;
 
@@ -196,7 +196,7 @@ change (`_commit_snapshot_sequence_number`). The write side uses them to apply e
 and drops them before it writes. A streaming read starts at the latest snapshot by default, so
 `starting_strategy` also picks up changes made before the pipeline started.
 
-```sh
+```sql
 INSERT INTO orders_mirror
 WITH ('mode' = 'merge-on-read',
       'change_type_column' = '_change_type',
@@ -226,7 +226,7 @@ Start a third shell in the right pane:
 
 Connect to the catalog, and check that both tables are there:
 
-```sh
+```sql
 !run iceberg-cdc/catalog.sql
 USE DATABASE quickstart.shop;
 SHOW TABLES;
@@ -235,7 +235,7 @@ SHOW TABLES;
 Add three orders. Each change carries its type (`op`), and a sequence number (`seq`) that goes up
 with each change to the same key:
 
-```sh
+```sql
 INSERT INTO orders
 WITH (
   'mode' = 'merge-on-read',
@@ -250,7 +250,7 @@ VALUES (1, 'apple', 3, 'INSERT', 1),
 Within a few seconds, three inserts show up in the live view on the left. Query both tables. `orders_mirror` gets the same three orders once the Dataflow job is running,
 which can take a few minutes the first time.
 
-```sh
+```sql
 SELECT * FROM orders;
 SELECT * FROM orders_mirror;
 ```
@@ -260,7 +260,7 @@ SELECT * FROM orders_mirror;
 Now change order 1, delete order 2 and add order 4, all in one snapshot. Both halves of an update,
 `UPDATE_BEFORE` and `UPDATE_AFTER`, share a sequence number.
 
-```sh
+```sql
 INSERT INTO orders
 WITH (
   'mode' = 'merge-on-read',
@@ -275,7 +275,7 @@ VALUES (1, 'apple', 3, 'UPDATE_BEFORE', 2),
 
 Four more changes stream into the live view. Query both tables again:
 
-```sh
+```sql
 SELECT * FROM orders;
 SELECT * FROM orders_mirror;
 ```
