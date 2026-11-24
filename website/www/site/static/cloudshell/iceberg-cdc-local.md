@@ -26,11 +26,14 @@ In this tutorial, you'll keep one Iceberg table in sync with another using chang
 (CDC), with a streaming pipeline that applies each change as it lands.
 
 Everything runs here in Cloud Shell, on a local Iceberg catalog, so you don't need a Google Cloud
-project. You'll use three Beam SQL shells, each in its own terminal tab:
+project. You'll use three Beam SQL shells:
 
 1. A live view of the changes to an `orders` table.
 2. A streaming pipeline that applies those changes to an `orders_mirror` table.
 3. A shell where you change `orders` and query both tables.
+
+The first and third sit side by side in one terminal tab, so you can watch the changes arrive as
+you make them. The second runs in a tab of its own.
 
 This tutorial follows the
 [Apache Iceberg CDC quickstart](https://beam.apache.org/documentation/io/built-in/iceberg-cdc/).
@@ -40,6 +43,7 @@ This tutorial follows the
 Download the script that starts the Beam SQL shell:
 
 ```sh
+cd ~
 curl -O https://raw.githubusercontent.com/apache/beam/master/scripts/beam-sql.sh
 chmod +x beam-sql.sh
 ```
@@ -62,7 +66,7 @@ Later starts only take a few seconds.
 
 When the `BeamSQL>` prompt shows up, create a catalog and a database:
 
-```sql
+```sh
 CREATE CATALOG quickstart TYPE 'iceberg'
 PROPERTIES (
   'type' = 'hadoop',
@@ -76,7 +80,7 @@ USE DATABASE quickstart.shop;
 Create the source table, `orders`. Its primary key tells the pipeline later on which row each
 change belongs to.
 
-```sql
+```sh
 CREATE EXTERNAL TABLE orders (
   id BIGINT PRIMARY KEY NOT ENFORCED,
   item VARCHAR,
@@ -87,7 +91,7 @@ TYPE 'iceberg';
 
 Open a live view of the table's changes. It's empty for now. Leave it open.
 
-```sql
+```sh
 SELECT * FROM CHANGES(orders)
 WITH ('streaming' = true, 'starting_strategy' = 'earliest', 'poll_interval_seconds' = 1);
 ```
@@ -103,7 +107,7 @@ in it:
 
 Connect to the catalog, and create a second table, `orders_mirror`:
 
-```sql
+```sh
 CREATE CATALOG quickstart TYPE 'iceberg'
 PROPERTIES (
   'type' = 'hadoop',
@@ -125,7 +129,7 @@ change (`_commit_snapshot_sequence_number`). The write side uses them to apply e
 and drops them before it writes. A streaming read starts at the latest snapshot by default, so
 `starting_strategy` also picks up changes made before the pipeline started.
 
-```sql
+```sh
 INSERT INTO orders_mirror
 WITH ('mode' = 'merge-on-read',
       'change_type_column' = '_change_type',
@@ -141,7 +145,11 @@ The pipeline keeps running. Leave it open.
 
 ## Write some changes
 
-Open a third tab, and start a third shell:
+Go back to the first tab, with the live view, and split it in two: press Ctrl+B, then `%`. The
+live view stays on the left, so you can watch it while you work in the new pane on the right. To
+move between the panes later, press Ctrl+B and then an arrow key.
+
+Start a third shell in the right pane:
 
 ```sh
 ./beam-sql.sh --version 2.79.0 --io iceberg
@@ -149,7 +157,7 @@ Open a third tab, and start a third shell:
 
 Connect to the catalog, and check that both tables are there:
 
-```sql
+```sh
 CREATE CATALOG quickstart TYPE 'iceberg'
 PROPERTIES (
   'type' = 'hadoop',
@@ -162,7 +170,7 @@ SHOW TABLES;
 Add three orders. Each change carries its type (`op`), and a sequence number (`seq`) that goes up
 with each change to the same key:
 
-```sql
+```sh
 INSERT INTO orders
 WITH (
   'mode' = 'merge-on-read',
@@ -174,10 +182,10 @@ VALUES (1, 'apple', 3, 'INSERT', 1),
        (3, 'plum', 2, 'INSERT', 1);
 ```
 
-Within a few seconds, three inserts show up in the live view in the first tab. Back in this tab,
-query both tables. Each one holds the same three orders.
+Within a few seconds, three inserts show up in the live view on the left. Query both tables. Each
+one holds the same three orders.
 
-```sql
+```sh
 SELECT * FROM orders;
 SELECT * FROM orders_mirror;
 ```
@@ -187,7 +195,7 @@ SELECT * FROM orders_mirror;
 Now change order 1, delete order 2 and add order 4, all in one snapshot. Both halves of an update,
 `UPDATE_BEFORE` and `UPDATE_AFTER`, share a sequence number.
 
-```sql
+```sh
 INSERT INTO orders
 WITH (
   'mode' = 'merge-on-read',
@@ -202,7 +210,7 @@ VALUES (1, 'apple', 3, 'UPDATE_BEFORE', 2),
 
 Four more changes stream into the live view. Query both tables again:
 
-```sql
+```sh
 SELECT * FROM orders;
 SELECT * FROM orders_mirror;
 ```
@@ -211,7 +219,7 @@ SELECT * FROM orders_mirror;
 
 ## Clean up
 
-Press `q` in the first tab to close the live view, and press Ctrl+C in the second tab to stop the
+Press `q` in the left pane to close the live view, and press Ctrl+C in the second tab to stop the
 streaming `INSERT`. Type `!quit` to leave each shell.
 
 To delete the tables, delete their directory:
